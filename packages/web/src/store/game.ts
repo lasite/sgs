@@ -26,6 +26,8 @@ import {
   buildRevealEffects,
   playCard,
   refreshVictory,
+  serialize,
+  deserialize,
   type GameState,
   type PendingDecision,
   type Session,
@@ -48,7 +50,11 @@ interface GameStore {
   playHand: (card: CardId, targets: PlayerId[]) => void;
   endTurn: () => void;
   respond: (response: DecisionResponse) => void;
+  saveGame: () => void;
+  loadGame: () => boolean;
 }
+
+const SAVE_KEY = 'sgs.guozhan.save.v1';
 
 const id = <T extends string>(s: string): T => s as unknown as T;
 
@@ -181,5 +187,49 @@ export const useGame = create<GameStore>((set, get) => ({
       pending,
       log: tail([...log, '响应已提交'], 50),
     });
+  },
+
+  saveGame: () => {
+    const { session, pending, log } = get();
+    if (!session) return;
+    if (pending || session.queue.length > 0) {
+      set({ log: tail([...log, '存档失败：当前有未完成动作'], 50) });
+      return;
+    }
+    try {
+      window.localStorage.setItem(
+        SAVE_KEY,
+        JSON.stringify({ state: serialize(session.state), log }),
+      );
+      set({ log: tail([...log, '已存档到本地'], 50) });
+    } catch (e) {
+      set({ log: tail([...log, `存档失败: ${(e as Error).message}`], 50) });
+    }
+  },
+
+  loadGame: (): boolean => {
+    const raw = window.localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    try {
+      const parsed = JSON.parse(raw) as { state: string; log?: string[] };
+      const restored = deserialize(parsed.state);
+      const reg = new TriggerRegistry();
+      installGuozhanRules(reg);
+      const session = createSession(restored, reg);
+      const ai = new HeuristicAi({ stateRef: () => session.state });
+      const pending = pumpAi(session, ai, HUMAN);
+      set({
+        session,
+        ai,
+        humanId: HUMAN,
+        state: refreshVictory(session.state),
+        pending,
+        log: [...(parsed.log ?? []), '已读取存档'],
+      });
+      return true;
+    } catch (e) {
+      set({ log: [`读档失败: ${(e as Error).message}`] });
+      return false;
+    }
   },
 }));

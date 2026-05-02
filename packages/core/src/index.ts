@@ -5,3 +5,4 @@ export * from './data/index.js';
 export * from './skills/index.js';
 export * from './guozhan/index.js';
 export * from './ai/index.js';
+export * from './persistence.js';

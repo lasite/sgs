@@ -10,17 +10,27 @@ export function App(): JSX.Element {
   const log = useGame((s) => s.log);
   const start = useGame((s) => s.start);
 
+  const loadGame = useGame((s) => s.loadGame);
+
   if (!state || !humanId) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <h1 className="text-3xl font-bold">三国杀·国战</h1>
         <p className="text-slate-400 text-sm">3 人对局：你 + 2 AI</p>
-        <button
-          onClick={start}
-          className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded"
-        >
-          开始对局
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={start}
+            className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded"
+          >
+            开始对局
+          </button>
+          <button
+            onClick={() => loadGame()}
+            className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded"
+          >
+            读取存档
+          </button>
+        </div>
       </div>
     );
   }
@@ -51,8 +61,16 @@ export function App(): JSX.Element {
     <div className="min-h-screen p-6 max-w-6xl mx-auto space-y-4">
       <header className="flex items-baseline justify-between">
         <h1 className="text-2xl font-bold">三国杀·国战</h1>
-        <div className="text-xs text-slate-400">
-          回合 {state.turnNumber} · 阶段 {state.phase} · 牌堆 {state.drawPile.length}
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-slate-400">
+            回合 {state.turnNumber} · 阶段 {state.phase} · 牌堆 {state.drawPile.length}
+          </div>
+          <button
+            onClick={() => useGame.getState().saveGame()}
+            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-xs rounded"
+          >
+            存档
+          </button>
         </div>
       </header>
 
