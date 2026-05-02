@@ -7,6 +7,7 @@
 import type { CardId } from '../model/card.js';
 import type { Player, PlayerId } from '../model/player.js';
 import type { GameState, TurnPhase } from '../model/state.js';
+import type { Kingdom } from '../model/general.js';
 import { TURN_PHASES } from '../model/state.js';
 import type {
   DamageEvent,
@@ -303,6 +304,50 @@ export const setFlag = (
     }
     return { ...p, flags };
   });
+
+export const setKingdomChoice = (
+  state: GameState,
+  player: PlayerId,
+  slot: 'main' | 'sub',
+  kingdom: Kingdom,
+): GameState =>
+  updatePlayer(state, player, (p) => {
+    if (slot === 'main') return { ...p, main: { ...p.main, kingdomChoice: kingdom } };
+    return { ...p, sub: { ...p.sub, kingdomChoice: kingdom } };
+  });
+
+export const setAmbitionist = (
+  state: GameState,
+  player: PlayerId,
+  value: boolean,
+): GameState =>
+  updatePlayer(state, player, (p) => ({ ...p, isAmbitionist: value }));
+
+export const setMaxHp = (
+  state: GameState,
+  player: PlayerId,
+  delta: number,
+): GameState =>
+  updatePlayer(state, player, (p) => ({
+    ...p,
+    maxHp: Math.max(0, p.maxHp + delta),
+  }));
+
+export const markDeath = (
+  state: GameState,
+  player: PlayerId,
+  source: PlayerId | null,
+): { state: GameState; events: readonly GameEvent[] } => {
+  const t = tick(state);
+  const ev: GameEvent = {
+    type: 'death',
+    tick: t.tick,
+    target: player,
+    source,
+  };
+  const next = updatePlayer(t.state, player, (p) => ({ ...p, alive: false }));
+  return { state: log(next, ev), events: [ev] };
+};
 
 export const revealGeneral = (
   state: GameState,

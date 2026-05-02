@@ -29,6 +29,10 @@ import {
   advanceTurn,
   toPile,
   setFlag,
+  setKingdomChoice,
+  setAmbitionist,
+  setMaxHp,
+  markDeath,
 } from './mutations.js';
 import type { GameEvent } from './events.js';
 import type {
@@ -138,6 +142,23 @@ const applyEffect = (
     case 'set-flag': {
       s.state = setFlag(s.state, effect.player, effect.flag, effect.value);
       return { events: [] };
+    }
+    case 'set-kingdom-choice': {
+      s.state = setKingdomChoice(s.state, effect.player, effect.slot, effect.kingdom);
+      return { events: [] };
+    }
+    case 'set-ambitionist': {
+      s.state = setAmbitionist(s.state, effect.player, effect.value);
+      return { events: [] };
+    }
+    case 'set-max-hp': {
+      s.state = setMaxHp(s.state, effect.player, effect.delta);
+      return { events: [] };
+    }
+    case 'mark-death': {
+      const r = markDeath(s.state, effect.player, effect.source);
+      s.state = r.state;
+      return { events: r.events };
     }
     case 'phase-change': {
       const r = setPhase(s.state, effect.to);

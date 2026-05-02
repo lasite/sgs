@@ -33,6 +33,12 @@ export type Effect =
   | { readonly kind: 'heal'; readonly source: PlayerId | null; readonly target: PlayerId;
       readonly amount: number; readonly reason: string }
   | { readonly kind: 'reveal-general'; readonly player: PlayerId; readonly slot: 'main' | 'sub' }
+  | { readonly kind: 'set-kingdom-choice'; readonly player: PlayerId;
+      readonly slot: 'main' | 'sub';
+      readonly kingdom: 'wei' | 'shu' | 'wu' | 'qun' }
+  | { readonly kind: 'set-ambitionist'; readonly player: PlayerId; readonly value: boolean }
+  | { readonly kind: 'set-max-hp'; readonly player: PlayerId; readonly delta: number }
+  | { readonly kind: 'mark-death'; readonly player: PlayerId; readonly source: PlayerId | null }
   | { readonly kind: 'to-pile'; readonly cards: readonly CardId[]; readonly pile: 'discard' | 'draw' }
   | { readonly kind: 'set-flag'; readonly player: PlayerId;
       readonly flag: string; readonly value: number | string | boolean | null }
