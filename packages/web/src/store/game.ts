@@ -24,6 +24,9 @@ import {
   enqueue,
   respond as sessionRespond,
   buildRevealEffects,
+  buildPlayerPhasesUpToPlay,
+  buildAiFullTurn,
+  buildHumanEndTurnAndAdvance,
   playCard,
   refreshVictory,
   serialize,
@@ -76,6 +79,36 @@ const pumpAi = (
   return pending;
 };
 
+/**
+ * Drive the simulation until either the active player is the human in
+ * their `play` phase (UI takes over), the game has ended, or a pending
+ * decision belongs to the human.  Each AI seat runs their full turn
+ * autonomously: phases-up-to-play → discard (auto via trigger) → end →
+ * advance.
+ */
+const runUntilHuman = (
+  session: Session,
+  ai: HeuristicAi,
+  humanId: PlayerId,
+): PendingDecision | null => {
+  let pending = pumpAi(session, ai, humanId);
+  let safety = 0;
+  while (!pending) {
+    if (safety++ > 200) throw new Error('runUntilHuman: step cap exceeded');
+    if (session.state.victory.ended) break;
+    const cur = session.state.players[session.state.currentPlayerSeat];
+    if (!cur || !cur.alive) break;
+    if (cur.id === humanId) {
+      enqueue(session, buildPlayerPhasesUpToPlay(humanId));
+      pending = pumpAi(session, ai, humanId);
+      break;
+    }
+    enqueue(session, buildAiFullTurn(session.state, cur.id));
+    pending = pumpAi(session, ai, humanId);
+  }
+  return pending;
+};
+
 const tail = <T>(arr: readonly T[], n: number): T[] => arr.slice(Math.max(0, arr.length - n));
 
 export const useGame = create<GameStore>((set, get) => ({
@@ -107,7 +140,7 @@ export const useGame = create<GameStore>((set, get) => ({
     );
     const session = createSession(initial, reg);
     const ai = new HeuristicAi({ stateRef: () => session.state });
-    const pending = pumpAi(session, ai, HUMAN);
+    const pending = runUntilHuman(session, ai, HUMAN);
     set({
       session,
       ai,
@@ -122,7 +155,7 @@ export const useGame = create<GameStore>((set, get) => ({
     const { session, ai, humanId, log } = get();
     if (!session || !ai || !humanId) return;
     enqueue(session, buildRevealEffects(session.state, humanId, slot));
-    const pending = pumpAi(session, ai, humanId);
+    const pending = runUntilHuman(session, ai, humanId);
     set({
       state: refreshVictory(session.state),
       pending,
@@ -142,7 +175,7 @@ export const useGame = create<GameStore>((set, get) => ({
       set({ log: tail([...log, `出牌失败: ${(e as Error).message}`], 50) });
       return;
     }
-    const pending = pumpAi(session, ai, humanId);
+    const pending = runUntilHuman(session, ai, humanId);
     set({
       state: refreshVictory(session.state),
       pending,
@@ -153,23 +186,8 @@ export const useGame = create<GameStore>((set, get) => ({
   endTurn: () => {
     const { session, ai, humanId, log } = get();
     if (!session || !ai || !humanId) return;
-    // Walk discard → end → next turn.  For the MVP we hand-craft the
-    // pipeline including AI 1's draw, then let pumpAi handle the rest.
-    const nextSeat = session.state.players.find((p) => p.id !== humanId && p.alive)?.id;
-    enqueue(session, [
-      { kind: 'phase-change', to: 'discard' },
-      { kind: 'phase-change', to: 'end' },
-      { kind: 'turn-advance' },
-      { kind: 'phase-change', to: 'start' },
-      { kind: 'phase-change', to: 'judge' },
-      { kind: 'phase-change', to: 'draw' },
-      ...(nextSeat
-        ? [{ kind: 'draw-cards' as const, player: nextSeat, count: 2,
-              reason: 'phase' as const }]
-        : []),
-      { kind: 'phase-change', to: 'play' },
-    ]);
-    const pending = pumpAi(session, ai, humanId);
+    enqueue(session, buildHumanEndTurnAndAdvance(session.state, humanId));
+    const pending = runUntilHuman(session, ai, humanId);
     set({
       state: refreshVictory(session.state),
       pending,
@@ -181,7 +199,7 @@ export const useGame = create<GameStore>((set, get) => ({
     const { session, ai, humanId, log } = get();
     if (!session || !ai || !humanId) return;
     sessionRespond(session, response);
-    const pending = pumpAi(session, ai, humanId);
+    const pending = runUntilHuman(session, ai, humanId);
     set({
       state: refreshVictory(session.state),
       pending,
@@ -217,7 +235,7 @@ export const useGame = create<GameStore>((set, get) => ({
       installGuozhanRules(reg);
       const session = createSession(restored, reg);
       const ai = new HeuristicAi({ stateRef: () => session.state });
-      const pending = pumpAi(session, ai, HUMAN);
+      const pending = runUntilHuman(session, ai, HUMAN);
       set({
         session,
         ai,
