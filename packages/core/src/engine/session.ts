@@ -27,6 +27,8 @@ import {
   revealGeneral,
   setPhase,
   advanceTurn,
+  toPile,
+  setFlag,
 } from './mutations.js';
 import type { GameEvent } from './events.js';
 import type {
@@ -128,6 +130,15 @@ const applyEffect = (
       s.state = r.state;
       return { events: [r.event] };
     }
+    case 'to-pile': {
+      const r = toPile(s.state, effect.cards, effect.pile);
+      s.state = r.state;
+      return { events: [r.event] };
+    }
+    case 'set-flag': {
+      s.state = setFlag(s.state, effect.player, effect.flag, effect.value);
+      return { events: [] };
+    }
     case 'phase-change': {
       const r = setPhase(s.state, effect.to);
       s.state = r.state;
@@ -139,11 +150,9 @@ const applyEffect = (
       return { events: r.events };
     }
     case 'request': {
-      // The handler that wraps `request` is responsible for setting `resume`;
-      // bare `request` effects are turned into a no-resume placeholder.
       const pending: PendingDecision = {
         request: effect.request,
-        resume: () => [],
+        resume: effect.resume,
       };
       return { events: [], pending };
     }

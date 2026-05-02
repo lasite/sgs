@@ -33,5 +33,21 @@ export type Effect =
   | { readonly kind: 'heal'; readonly source: PlayerId | null; readonly target: PlayerId;
       readonly amount: number; readonly reason: string }
   | { readonly kind: 'reveal-general'; readonly player: PlayerId; readonly slot: 'main' | 'sub' }
-  | { readonly kind: 'request'; readonly request: DecisionRequest }
+  | { readonly kind: 'to-pile'; readonly cards: readonly CardId[]; readonly pile: 'discard' | 'draw' }
+  | { readonly kind: 'set-flag'; readonly player: PlayerId;
+      readonly flag: string; readonly value: number | string | boolean | null }
+  | RequestEffect
   | { readonly kind: 'sequence'; readonly effects: readonly Effect[] };
+
+/**
+ * A request to a player.  The `resume` continuation receives the
+ * matched response plus the current state and produces follow-up
+ * effects.  Resume runs *after* the engine validates the response id
+ * matches.
+ */
+export interface RequestEffect {
+  readonly kind: 'request';
+  readonly request: DecisionRequest;
+  readonly resume: (response: import('./decisions.js').DecisionResponse,
+                    state: import('../model/state.js').GameState) => readonly Effect[];
+}

@@ -64,8 +64,11 @@ export const drawCards = (
   count: number,
   reason: DrawCardsEvent['reason'],
 ): Result<DrawCardsEvent> => {
-  const drawn = state.drawPile.slice(-count);
-  const remaining = state.drawPile.slice(0, state.drawPile.length - drawn.length);
+  // Top of pile = end of array; drawing pops from the end, so the top
+  // card is drawn first.  We record `drawn` in draw-order (top → next).
+  const slice = state.drawPile.slice(-count);
+  const drawn = slice.slice().reverse();
+  const remaining = state.drawPile.slice(0, state.drawPile.length - slice.length);
   const t = tick(state);
   const event: DrawCardsEvent = {
     type: 'draw-cards',
@@ -270,6 +273,36 @@ export const heal = (
   const next = updatePlayer(t.state, target, (pp) => ({ ...pp, hp: pp.hp + actual }));
   return { state: log(next, event), event };
 };
+
+export const toPile = (
+  state: GameState,
+  cards: readonly CardId[],
+  pile: 'discard' | 'draw',
+): Result<EnterPileEvent> => {
+  const t = tick(state);
+  const event: EnterPileEvent = { type: 'enter-pile', tick: t.tick, cards, pile };
+  const next: GameState =
+    pile === 'discard'
+      ? { ...t.state, discardPile: [...t.state.discardPile, ...cards] }
+      : { ...t.state, drawPile: [...cards, ...t.state.drawPile] };
+  return { state: log(next, event), event };
+};
+
+export const setFlag = (
+  state: GameState,
+  player: PlayerId,
+  flag: string,
+  value: number | string | boolean | null,
+): GameState =>
+  updatePlayer(state, player, (p) => {
+    const flags = { ...p.flags };
+    if (value === null) {
+      delete flags[flag];
+    } else {
+      flags[flag] = value;
+    }
+    return { ...p, flags };
+  });
 
 export const revealGeneral = (
   state: GameState,
