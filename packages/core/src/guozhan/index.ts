@@ -9,6 +9,7 @@ import { registerGuozhanTriggers } from './reveal.js';
 import { registerVictoryTrigger } from './victory.js';
 import { registerFirstTurnTrigger } from './first-turn.js';
 import { registerHandLimitTrigger } from '../engine/turns.js';
+import { registerDeathCheckTrigger } from '../engine/death.js';
 
 /** Convenience: wire all Guozhan-level engine triggers in one shot. */
 export const installGuozhanRules = (registry: TriggerRegistry): void => {
@@ -16,4 +17,5 @@ export const installGuozhanRules = (registry: TriggerRegistry): void => {
   registerVictoryTrigger(registry);
   registerFirstTurnTrigger(registry);
   registerHandLimitTrigger(registry);
+  registerDeathCheckTrigger(registry);
 };

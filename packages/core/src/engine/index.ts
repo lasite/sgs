@@ -6,4 +6,5 @@ export * from './mutations.js';
 export * from './session.js';
 export * from './phases.js';
 export * from './turns.js';
+export * from './death.js';
 export * from './rng.js';
